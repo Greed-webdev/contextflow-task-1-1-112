@@ -15,10 +15,29 @@ const DEFAULT = {
 };
 let S = load();
 function load(){
-  try{ return Object.assign({}, DEFAULT, JSON.parse(localStorage.getItem(KEY)) || {}); }
-  catch(e){ return Object.assign({}, DEFAULT); }
+  /* Приватный режим/заблокированный localStorage — не роняют старт. */
+  let raw = null;
+  try{ raw = JSON.parse(localStorage.getItem(KEY)); }catch(e){ raw = null; }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) raw = {};
+  const o = Object.assign({}, DEFAULT, raw);
+  /* Битые/враждебные значения из хранилища приводим к рабочей форме:
+     иначе «stats»:null или «stage»:«пять» кладут отрисовку. */
+  if (typeof o.lang !== 'string') o.lang = null;
+  o.stage = Number(o.stage);
+  if (!(o.stage >= 1 && o.stage <= 5)) o.stage = DEFAULT.stage;
+  if (!o.progress || typeof o.progress !== 'object' || Array.isArray(o.progress)) o.progress = {};
+  if (!o.stats || typeof o.stats !== 'object' || Array.isArray(o.stats)) o.stats = {};
+  o.stats = Object.assign({}, DEFAULT.stats, o.stats);
+  if (!o.sound || typeof o.sound !== 'object' || Array.isArray(o.sound)) o.sound = {};
+  o.sound = Object.assign({}, DEFAULT.sound, o.sound);
+  o.seenIntro = !!o.seenIntro;
+  o.allOpen = !!o.allOpen;
+  return o;
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ /* квота/приватный режим: продолжаем работать в памяти */ }
+}
 
 const $  = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2226,7 +2245,7 @@ const Settings = {
         <button class="btn" style="background:var(--clay);color:#fff" onclick="Settings.doReset()">Сбросить</button>
       </div>`);
   },
-  doReset(){ localStorage.removeItem(KEY); location.reload(); }
+  doReset(){ try{ localStorage.removeItem(KEY); }catch(e){} location.reload(); }
 };
 
 /* ---------------- старт ---------------- */
