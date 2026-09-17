@@ -228,7 +228,7 @@ const FLOWNUM = (w, digits) => {
   }
   return cur;
 };
-const NEGLEAD=['no','not','never','without'];
+const NEGLEAD=['no','not','never','without','cannot'];
 const NEGPASS=['to','a','an','the','and','or','any','it','this','that','one','really','just','very','so',
 'want','need','take','have','get','choose','prefer','buy','think','do','does','did',
 'would','will','can','could','should','am','is','are','be','like','likes','liked','wants'];
@@ -265,11 +265,11 @@ const S1 = { title:"Купить куртку · ур. 44",
           tr:{
             bye:{them:'Have a good day!',ruThem:'Хорошего дня!',next:null},
             help:{them:'Of course! I can help you. What size do you wear?',ruThem:'Конечно! Я помогу. Какой размер вы носите?',next:'size'},
-            browse:{them:'Ok. Take your time and look around.',ruThem:'Хорошо. Не спешите, осмотритесь.',next:null},
-            notb:{them:'Oh, I see. Let me know if you need anything.',ruThem:'А, понятно. Дайте знать, если что-то понадобится.',next:null},
+            browse:{them:'Ok. Take your time and look around. We have jackets and coats here.',ruThem:'Хорошо. Не спешите, осмотритесь. Куртки и пальто у нас здесь.',next:'ask'},
+            notb:{them:'Oh, I see. What are you looking for, then?',ruThem:'А, понятно. А что вы ищете?',next:'ask'},
             jacket:{them:'Here are our jackets. What size are you?',ruThem:'Вот наши куртки. Какой у вас размер?',next:'size'},
             coat:{them:'Coats are over there. What size do you wear?',ruThem:'Куртки вон там. Какой размер вы носите?',next:'size'},
-            other:{them:'Oh, hats and scarves are on the other side. Let me know if you need help.',ruThem:'Головные уборы и шарфы с другой стороны. Обращайтесь, если что.',next:null},
+            other:{them:'Oh, hats and scarves are on the other side. Can I help you with a jacket or a coat?',ruThem:'Головные уборы и шарфы с другой стороны. Могу помочь с курткой или пальто?',next:'ask'},
           } },
           size:{ task:'Назови размер (например: средний, пожалуйста).', best:'Medium, please.',
           judge(w){
@@ -394,10 +394,12 @@ const S2 = { title:"Заказать обед · ур. 48",
         opener:{them:'Are you ready to order?', ru:'Готовы заказать?'},
         nodes:{
           ready:{ task:'Ответь, готов ли заказывать (например: ещё нет, можно меню, пожалуйста?).', best:'Not yet. Could I see the menu, please?',
-          judge(w){
+          judge(w,mem){
                 const HUR=['time','wait','waiting'];
                 if(chose(w,'menu')) return {br:'menu'};
                 if(chose(w,'soup','bread','salad')) return {br:'yes'};
+                const rawReady=(mem&&mem._raw||'').toLowerCase();
+                if(/not[^.]*\bready\b|\bready\b[^.]*\bnot\b|not[^.]*\border\b|\border\b[^.]*\bnot\b/.test(rawReady)) return {br:'wait'}; /* «ещё не готов заказать» */
                 if(chose(w,'ready','yes','yeah','order')) return {br:'yes'};
                 if(chose(w,'bye','goodbye','later','go')) return {br:'bye'};
                 if(has(w,'no','not','never')){

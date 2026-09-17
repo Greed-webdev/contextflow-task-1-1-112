@@ -228,7 +228,7 @@ const FLOWNUM = (w, digits) => {
   }
   return cur;
 };
-const NEGLEAD=['no','not','never','without'];
+const NEGLEAD=['no','not','never','without','cannot'];
 const NEGPASS=['to','a','an','the','and','or','any','it','this','that','one','really','just','very','so',
 'want','need','take','have','get','choose','prefer','buy','think','do','does','did',
 'would','will','can','could','should','am','is','are','be','like','likes','liked','wants'];
@@ -254,6 +254,7 @@ const S1 = { title:"Назвать количество · ур. 14",
           if(n===5) return {br:'many'};
           const nums = d.length>0 || w.some(x=>x in NUM);
           if(nums && n===0) return {huh:1};          // ноль — не количество
+          if(d.length&&d.some(x=>x>99)) return {huh:1};          // «777» цифрами — нереальное количество
           if(has(w,'much','cost','price','expensive')) return {br:'price'};
           if(has(w,'bye','goodbye','leave','leaving')||(has(w,'no')&&has(w,'thanks','thank'))||(has(w,'just')&&has(w,'looking'))) return {br:'bye'};
           if(nums){ mem._lc=(mem._lc||0)+1;           // третий круг с числом — уступаем
@@ -296,19 +297,23 @@ const S1 = { title:"Назвать количество · ур. 14",
             loaves:{them:'How many loaves?',ruThem:'Сколько буханок?',next:'extra'},
             done:{them:'Ok. That is twelve euros, please.',ruThem:'Хорошо. С вас двенадцать евро.',next:'pay'} } },
           pay:{ task:'Скажи, как будешь платить (например: наличными).', best:'I will pay in cash.',
-          judge(w){ if(has(w,'card')&&!isNegatedIntent(w,['card'])) return {br:'card'}; /* «no card» — не карта */
-          if(has(w,'cash','notes','money')) return {br:'cash'}; return {huh:1}; },
+          judge(w,mem){ const rawPay=(mem&&mem._raw||'').toLowerCase();
+          if(has(w,'card')&&!isNegatedIntent(w,['card'])) return {br:'card'}; /* «no card» — не карта */
+          if(has(w,'cash','notes','money')){ if(/cannot|can't|won't|don't|doesn't|didn't|no way/.test(rawPay)) return {huh:1}; /* «не могу наличными» — переспрос */ return {br:'cash'}; }
+          return {huh:1}; },
           tr:{ cash:{them:'Here is your change.',ruThem:'Вот ваша сдача.',next:'change'},
             card:{them:'Sorry, we only take cash today.',ruThem:'Извините, сегодня только наличные.',next:'pay'} } },
           change:{ task:'Поблагодари и проверь сдачу (например: спасибо, всё верно).', best:'Thank you. That is right.',
-          judge(w){ const pos=['right','ok','okay','fine','correct','good'];
+          judge(w,mem){ const pos=['right','ok','okay','fine','correct','good'];
           const negHit = pos.some(x=>{ const i=w.indexOf(x); return i>-1 && negatedAt(w,i); });
-          if(has(w,'wrong','short','mistake','incorrect')||negHit) return {br:'recheck'};
-          if(w[0]==='no'||w[0]==='not') return {br:'recheck'};        // голое «no» — сдачу не принимает
+          const complain=()=>{ mem._rc=(mem._rc||0)+1; return mem._rc>=3?{br:'concede'}:{br:'recheck'}; }; /* третий круг жалоб — уступаем */
+          if(has(w,'wrong','short','mistake','incorrect')||negHit) return complain();
+          if(w[0]==='no'||w[0]==='not') return complain();        // голое «no» — сдачу не принимает
           if(has(w,'thanks','thank')||pos.some(x=>w.includes(x))) return {br:'ok'};
           return {huh:1}; },
           tr:{ ok:{them:'You are welcome. Have a nice day!',ruThem:'Пожалуйста. Хорошего дня!',next:null},
-            recheck:{them:'Sorry. Let me count again. Here you are.',ruThem:'Извините. Пересчитаю. Вот, пожалуйста.',next:'change'} } },
+            recheck:{them:'Sorry. Let me count again. Here you are.',ruThem:'Извините. Пересчитаю. Вот, пожалуйста.',next:'change'},
+            concede:{them:'I am sorry about the mix-up. Please keep the change. Have a nice day!',ruThem:'Извините за путаницу. Оставьте сдачу себе. Хорошего дня!',next:null} } },
           bye:{ task:'Попрощайся.', best:'Thank you. Goodbye!',
           judge(w){ if(has(w,'bye','goodbye','thanks','thank','see','later','day')) return {br:'ok'}; return {huh:1}; },
           tr:{ ok:{them:'Goodbye!',ruThem:'До свидания!',next:null} } }
@@ -321,7 +326,10 @@ const S2 = { title:"Выбрать цвет · ур. 21",
           nodes:{
           pick:{ task:'Сделай выбор (например: я предпочитаю чёрный).', best:'I prefer the black one.',
           judge(w,mem){ const b=chose(w,'black'), r=chose(w,'red');
+          const rawPick=(mem&&mem._raw||'').toLowerCase();
+          const negB=/black[^.]*\bis not\b|\bis not\b[^.]*black|\bnot\b[^.]*black\b|black[^.]*\bnot\b/.test(rawPick), negR=/\bred\b[^.]*\bis not\b|\bis not\b[^.]*red|\bnot\b[^.]*\bred\b|red[^.]*\bnot\b/.test(rawPick);
           if(has(w,'much','cost','price','expensive')) return {br:'price'};
+          if((b&&negB)||(r&&negR)) return {br:'ask'}; /* цвет отвергнут — переспрос */
           if(b&&r) return {br:'both'};
           if(b) return {br:'black'};
           if(r) return {br:'red'};

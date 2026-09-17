@@ -137,7 +137,7 @@ const COURSE = {
         intro:'Ты заходишь в офис. Человек за стойкой поднимает голову.',
         opener:{them:'Hello! Can I help you?', ru:'Здравствуйте! Чем могу помочь?'},
         nodes:{
-      n0:{ task:'Поздоровайся, представься и скажи, зачем пришёл (например: привет, я Анна, у меня встреча).', best:'Hi, my name is Anna. I have a meeting.',
+      n0:{ task:'Поздоровайся (например: привет).', best:'Hello.',
         judge(w,mem){
           if(deniesName(w)) return {huh:1}; /* «Anna is not my name» — переспрос */
           let lim=w.length; ['with','see'].forEach(k=>{ const i=w.indexOf(k); if(i!==-1&&i<lim) lim=i; });
@@ -191,10 +191,20 @@ const COURSE = {
           if(has(w,'help','lost','wait','waiting','friend','someone','person','look','find','another','wrong','just')) return {br:'other'};
           if(neg||has(w,'what','why','sorry','pardon','repeat','again','know','understand')) return {br:'ask'};
           return {huh:1}; },
-        tr:{ meet:{them:'Great. The meeting is in room 204, second floor, on the left.',ruThem:'Отлично. Встреча — кабинет 204, второй этаж, слева.',next:'floor'},
+        tr:{ meet:{them:'Great. The meeting is in room 204, second floor, on the left. Please sign the visitor book.',ruThem:'Отлично. Встреча — кабинет 204, второй этаж, слева. Распишитесь, пожалуйста, в журнале.',next:'sign'},
              home:{them:'Oh, I see. Take care, then!',ruThem:'А, понял. Тогда удачи!',next:'byehome'},
              other:{them:'I see. Take a seat - I will find the right person for you.',ruThem:'Ясно. Присядьте - я найду, кто вам нужен.',next:'wait'},
              ask:{them:'What can I do for you?',ruThem:'Чем я могу вам помочь?',next:'reason'} } },
+      sign:{ task:'Скажи, что понял, и поблагодари (например: хорошо, спасибо).', best:'Okay, thank you.',
+        judge(w,mem){
+          if(chose(w,'bye','goodbye')) return {br:'bye'};
+          if(has(w,'what','where','which','again','repeat','sorry','pardon')) return {br:'again'};
+          if(has(w,'room','floor','second','lift','left')||((mem&&mem._digits)||[]).includes('204')) return {br:'ok'}; /* попутно подтверждает путь */
+          if(has(w,'ok','okay','yes','yeah','sure','fine','great','good','thanks','thank','right','alright')) return {br:'ok'};
+          return {huh:1}; },
+        tr:{ ok:{them:'Thank you. That is right - room 204, second floor.',ruThem:'Спасибо. Всё верно — кабинет 204, второй этаж.',next:'floor'},
+             again:{them:'Of course. Room 204, second floor, on the left.',ruThem:'Конечно. Кабинет 204, второй этаж, слева.',next:'floor'},
+             bye:{them:'No problem. Have a nice day!',ruThem:'Без проблем. Хорошего дня!',next:'bye'} } },
       reason:{ task:'Ответь, зачем пришёл (например: я на встречу / жду друга / просто зашёл).', best:'I am here for the meeting.',
         judge(w){ if(has(w,'meeting','meet','appointment')&&!has(w,'no','not')) return {br:'meet'};
           if(isNegatedIntent(w,['home','leave','going','go'])) return {huh:1}; /* «не иду домой» — не уход */
@@ -218,7 +228,7 @@ const COURSE = {
           if(isNegatedIntent(w,['wait'])||has(w,'no','not','never')) return {br:'refuse'};
           if(has(w,'thanks','thank','ok','okay','sure','fine','great','good','alright','right','cheers','nothing','bye','goodbye')) return {br:'ok'};
           return {huh:1}; },
-        tr:{ ok:{them:'You are welcome.',ruThem:'Пожалуйста.',next:null},
+        tr:{ ok:{them:'You are welcome.',ruThem:'Пожалуйста.',next:'bye'},
              refuse:{them:'No problem. Please take a seat - I will let you know when they arrive.',ruThem:'Без проблем. Присядьте — я сообщу, когда они приедут.',next:'bye'} } },
       floor:{ task:'Переспроси, куда идти (например: кабинет 204, второй этаж?).', best:'Room 204, second floor?',
         judge(w,mem){ const d204=(mem._digits||[]).includes('204');
@@ -311,6 +321,7 @@ const COURSE = {
       numH:{ task:'Назови номер дома (например: двенадцать).', best:'Twelve.',
         judge(w,mem){
           const ds=mem._digits||[];
+          if(ds.includes('0')||numOf(w)===0) return {huh:1}; /* дом «ноль» — не бывает */
           if(ds.some(d=>d.length>3||/^(\d)\1+$/.test(d))) return {huh:1}; /* 7777, 777 — не номер дома */
           const COUNT=['brother','brothers','sister','sisters','children','people','friend','friends','day','days','week','weeks','month','months','year','years','euro','euros','cat','cats','dog','dogs','apple','apples','car','cars','book','books','thing','things'];
           if(COUNT.some(x=>w.includes(x))) return {huh:1}; /* «два брата / две кошки» — не номер */
@@ -328,7 +339,7 @@ const COURSE = {
           if(ds.length>1) return {br:'again'};        // два числа — непонятно, какое возраст
           if(mem._raw&&/\d+[.,]\d+/.test(mem._raw)) return {br:'again'};  // 25.5 не возраст
           const n=ds.length?ds[0]:numOf(w);
-          if(n!==null&&n>120) return {huh:1};          // 777 лет не бывает
+          if(n!==null&&(n<1||n>120)) return {huh:1};          // 0 и 777 лет не бывает
           if(n===25) return {br:'ok'};
           if(n!==null) return {br:'again'}; return {huh:1}; },
         tr:{ ok:{them:'Thank you. What is your phone number?',ruThem:'Спасибо. Ваш номер телефона?',next:'phone'},
@@ -719,6 +730,7 @@ const COURSE = {
           if(n===5) return {br:'many'};
           const nums = d.length>0 || w.some(x=>x in NUM);
           if(nums && n===0) return {huh:1};          // ноль — не количество
+          if(d.length&&d.some(x=>x>99)) return {huh:1};          // «777» цифрами — нереальное количество
           if(has(w,'much','cost','price','expensive')) return {br:'price'};
           if(has(w,'bye','goodbye','leave','leaving')||(has(w,'no')&&has(w,'thanks','thank'))||(has(w,'just')&&has(w,'looking'))) return {br:'bye'};
           if(nums){ mem._lc=(mem._lc||0)+1;           // третий круг с числом — уступаем
@@ -761,19 +773,23 @@ const COURSE = {
             loaves:{them:'How many loaves?',ruThem:'Сколько буханок?',next:'extra'},
             done:{them:'Ok. That is twelve euros, please.',ruThem:'Хорошо. С вас двенадцать евро.',next:'pay'} } },
           pay:{ task:'Скажи, как будешь платить (например: наличными).', best:'I will pay in cash.',
-          judge(w){ if(has(w,'card')&&!isNegatedIntent(w,['card'])) return {br:'card'}; /* «no card» — не карта */
-          if(has(w,'cash','notes','money')) return {br:'cash'}; return {huh:1}; },
+          judge(w,mem){ const rawPay=(mem&&mem._raw||'').toLowerCase();
+          if(has(w,'card')&&!isNegatedIntent(w,['card'])) return {br:'card'}; /* «no card» — не карта */
+          if(has(w,'cash','notes','money')){ if(/cannot|can't|won't|don't|doesn't|didn't|no way/.test(rawPay)) return {huh:1}; /* «не могу наличными» — переспрос */ return {br:'cash'}; }
+          return {huh:1}; },
           tr:{ cash:{them:'Here is your change.',ruThem:'Вот ваша сдача.',next:'change'},
             card:{them:'Sorry, we only take cash today.',ruThem:'Извините, сегодня только наличные.',next:'pay'} } },
           change:{ task:'Поблагодари и проверь сдачу (например: спасибо, всё верно).', best:'Thank you. That is right.',
-          judge(w){ const pos=['right','ok','okay','fine','correct','good'];
+          judge(w,mem){ const pos=['right','ok','okay','fine','correct','good'];
           const negHit = pos.some(x=>{ const i=w.indexOf(x); return i>-1 && negatedAt(w,i); });
-          if(has(w,'wrong','short','mistake','incorrect')||negHit) return {br:'recheck'};
-          if(w[0]==='no'||w[0]==='not') return {br:'recheck'};        // голое «no» — сдачу не принимает
+          const complain=()=>{ mem._rc=(mem._rc||0)+1; return mem._rc>=3?{br:'concede'}:{br:'recheck'}; }; /* третий круг жалоб — уступаем */
+          if(has(w,'wrong','short','mistake','incorrect')||negHit) return complain();
+          if(w[0]==='no'||w[0]==='not') return complain();        // голое «no» — сдачу не принимает
           if(has(w,'thanks','thank')||pos.some(x=>w.includes(x))) return {br:'ok'};
           return {huh:1}; },
           tr:{ ok:{them:'You are welcome. Have a nice day!',ruThem:'Пожалуйста. Хорошего дня!',next:null},
-            recheck:{them:'Sorry. Let me count again. Here you are.',ruThem:'Извините. Пересчитаю. Вот, пожалуйста.',next:'change'} } },
+            recheck:{them:'Sorry. Let me count again. Here you are.',ruThem:'Извините. Пересчитаю. Вот, пожалуйста.',next:'change'},
+            concede:{them:'I am sorry about the mix-up. Please keep the change. Have a nice day!',ruThem:'Извините за путаницу. Оставьте сдачу себе. Хорошего дня!',next:null} } },
           bye:{ task:'Попрощайся.', best:'Thank you. Goodbye!',
           judge(w){ if(has(w,'bye','goodbye','thanks','thank','see','later','day')) return {br:'ok'}; return {huh:1}; },
           tr:{ ok:{them:'Goodbye!',ruThem:'До свидания!',next:null} } }
@@ -928,7 +944,10 @@ const COURSE = {
           nodes:{
           pick:{ task:'Сделай выбор (например: я предпочитаю чёрный).', best:'I prefer the black one.',
           judge(w,mem){ const b=chose(w,'black'), r=chose(w,'red');
+          const rawPick=(mem&&mem._raw||'').toLowerCase();
+          const negB=/black[^.]*\bis not\b|\bis not\b[^.]*black|\bnot\b[^.]*black\b|black[^.]*\bnot\b/.test(rawPick), negR=/\bred\b[^.]*\bis not\b|\bis not\b[^.]*red|\bnot\b[^.]*\bred\b|red[^.]*\bnot\b/.test(rawPick);
           if(has(w,'much','cost','price','expensive')) return {br:'price'};
+          if((b&&negB)||(r&&negR)) return {br:'ask'}; /* цвет отвергнут — переспрос */
           if(b&&r) return {br:'both'};
           if(b) return {br:'black'};
           if(r) return {br:'red'};
@@ -1454,7 +1473,9 @@ const COURSE = {
           since:{ task:'Ответь, с какого времени (например: со вчерашнего дня).', best:'Since yesterday.',
           judge(w,mem){ const d=(mem._digits||[]).map(Number);
                 const span=has(w,'day','days','week','weeks','month','months','hour','hours','year','years','ago','morning','night');
-                if(chose(w,'yesterday')) return {br:'yest'};
+                if(chose(w,'yesterday')){ const rawSince=(mem&&mem._raw||'').toLowerCase();
+                if(/not[^.]*yesterday|yesterday[^.]*not|isn't|wasn't|never/.test(rawSince)) return {huh:1}; /* «не со вчера» — уточнить */
+                return {br:'yest'}; }
                 if(chose(w,'today','morning')) return {br:'today'};
                 if(d.length && span) return {br:'days'};
                 if(chose(w,'day','days','week','weeks','month','months','long','time')) return {br:'days'};
@@ -1700,11 +1721,11 @@ const COURSE = {
           tr:{
             bye:{them:'Have a good day!',ruThem:'Хорошего дня!',next:null},
             help:{them:'Of course! I can help you. What size do you wear?',ruThem:'Конечно! Я помогу. Какой размер вы носите?',next:'size'},
-            browse:{them:'Ok. Take your time and look around.',ruThem:'Хорошо. Не спешите, осмотритесь.',next:null},
-            notb:{them:'Oh, I see. Let me know if you need anything.',ruThem:'А, понятно. Дайте знать, если что-то понадобится.',next:null},
+            browse:{them:'Ok. Take your time and look around. We have jackets and coats here.',ruThem:'Хорошо. Не спешите, осмотритесь. Куртки и пальто у нас здесь.',next:'ask'},
+            notb:{them:'Oh, I see. What are you looking for, then?',ruThem:'А, понятно. А что вы ищете?',next:'ask'},
             jacket:{them:'Here are our jackets. What size are you?',ruThem:'Вот наши куртки. Какой у вас размер?',next:'size'},
             coat:{them:'Coats are over there. What size do you wear?',ruThem:'Куртки вон там. Какой размер вы носите?',next:'size'},
-            other:{them:'Oh, hats and scarves are on the other side. Let me know if you need help.',ruThem:'Головные уборы и шарфы с другой стороны. Обращайтесь, если что.',next:null},
+            other:{them:'Oh, hats and scarves are on the other side. Can I help you with a jacket or a coat?',ruThem:'Головные уборы и шарфы с другой стороны. Могу помочь с курткой или пальто?',next:'ask'},
           } },
           size:{ task:'Назови размер (например: средний, пожалуйста).', best:'Medium, please.',
           judge(w){
@@ -1880,10 +1901,12 @@ const COURSE = {
         opener:{them:'Are you ready to order?', ru:'Готовы заказать?'},
         nodes:{
           ready:{ task:'Ответь, готов ли заказывать (например: ещё нет, можно меню, пожалуйста?).', best:'Not yet. Could I see the menu, please?',
-          judge(w){
+          judge(w,mem){
                 const HUR=['time','wait','waiting'];
                 if(chose(w,'menu')) return {br:'menu'};
                 if(chose(w,'soup','bread','salad')) return {br:'yes'};
+                const rawReady=(mem&&mem._raw||'').toLowerCase();
+                if(/not[^.]*\bready\b|\bready\b[^.]*\bnot\b|not[^.]*\border\b|\border\b[^.]*\bnot\b/.test(rawReady)) return {br:'wait'}; /* «ещё не готов заказать» */
                 if(chose(w,'ready','yes','yeah','order')) return {br:'yes'};
                 if(chose(w,'bye','goodbye','later','go')) return {br:'bye'};
                 if(has(w,'no','not','never')){
@@ -2348,6 +2371,7 @@ const COURSE = {
                 if(chose(w,'water')) return {br:'water'};
                 if(chose(w,'heat','heater','heating')) return {br:'heat'};
                 if(chose(w,'door')) return {br:'door'};
+                if(chose(w,'light','lamp')&&has(w,'problem','trouble')&&has(w,'no','not','never')&&!has(w,'broken','work','working','works')) return {huh:1}; /* свет — не проблема: уточнить, что сломано */
                 if(chose(w,'light','lamp')&&!has(w,'no','not','never')&&(has(w,'works','working','fine','ok','okay'))) return {br:'poslight'};
                 if(chose(w,'light','lamp')&&chose(w,'kitchen')) return {br:'light'};
                 if(chose(w,'light','lamp')&&has(w,'no','not','never')) return {br:'nlight'};
@@ -2649,8 +2673,10 @@ const COURSE = {
             dk:{them:'No problem. Where do you usually go? The centre?',ruThem:'Ничего страшного. Куда вы обычно ездите? В центр?',next:'sr'},
           } },
           sr:{ task:'Выбери тип билета (например: туда-обратно).', best:'Return, please.',
-          judge(w){
+          judge(w,mem){
                 if(chose(w,'bye','goodbye','later','leave','leaving')) return {br:'bye'};
+                const rawSr=(mem&&mem._raw||'').toLowerCase();
+                if(/return[^.]*is not|is not[^.]*return|\bnot\b[^.]*\breturn\b|return[^.]*\bnot\b/.test(rawSr)) return {br:'sing'}; /* «обратный не нужен» — одинарный */
                 if(chose(w,'return','back','both','ways')) return {br:'ret'};
                 if(has(w,'no','not','never')&&(w.includes('return')||w.includes('back'))) return {br:'sing'};
                 if(chose(w,'single','one')) return {br:'sing'};

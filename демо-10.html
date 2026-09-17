@@ -228,7 +228,7 @@ const FLOWNUM = (w, digits) => {
   }
   return cur;
 };
-const NEGLEAD=['no','not','never','without'];
+const NEGLEAD=['no','not','never','without','cannot'];
 const NEGPASS=['to','a','an','the','and','or','any','it','this','that','one','really','just','very','so',
 'want','need','take','have','get','choose','prefer','buy','think','do','does','did',
 'would','will','can','could','should','am','is','are','be','like','likes','liked','wants'];
@@ -262,8 +262,10 @@ const S1 = { title:"Купить билет · ур. 70",
             dk:{them:'No problem. Where do you usually go? The centre?',ruThem:'Ничего страшного. Куда вы обычно ездите? В центр?',next:'sr'},
           } },
           sr:{ task:'Выбери тип билета (например: туда-обратно).', best:'Return, please.',
-          judge(w){
+          judge(w,mem){
                 if(chose(w,'bye','goodbye','later','leave','leaving')) return {br:'bye'};
+                const rawSr=(mem&&mem._raw||'').toLowerCase();
+                if(/return[^.]*is not|is not[^.]*return|\bnot\b[^.]*\breturn\b|return[^.]*\bnot\b/.test(rawSr)) return {br:'sing'}; /* «обратный не нужен» — одинарный */
                 if(chose(w,'return','back','both','ways')) return {br:'ret'};
                 if(has(w,'no','not','never')&&(w.includes('return')||w.includes('back'))) return {br:'sing'};
                 if(chose(w,'single','one')) return {br:'sing'};

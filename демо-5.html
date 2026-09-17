@@ -228,7 +228,7 @@ const FLOWNUM = (w, digits) => {
   }
   return cur;
 };
-const NEGLEAD=['no','not','never','without'];
+const NEGLEAD=['no','not','never','without','cannot'];
 const NEGPASS=['to','a','an','the','and','or','any','it','this','that','one','really','just','very','so',
 'want','need','take','have','get','choose','prefer','buy','think','do','does','did',
 'would','will','can','could','should','am','is','are','be','like','likes','liked','wants'];
@@ -247,7 +247,7 @@ const S1 = { title:"Первое приветствие · ур. 3", start:'n0',
         intro:'Ты заходишь в офис. Человек за стойкой поднимает голову.',
         opener:{them:'Hello! Can I help you?', ru:'Здравствуйте! Чем могу помочь?'},
         nodes:{
-      n0:{ task:'Поздоровайся, представься и скажи, зачем пришёл (например: привет, я Анна, у меня встреча).', best:'Hi, my name is Anna. I have a meeting.',
+      n0:{ task:'Поздоровайся (например: привет).', best:'Hello.',
         judge(w,mem){
           if(deniesName(w)) return {huh:1}; /* «Anna is not my name» — переспрос */
           let lim=w.length; ['with','see'].forEach(k=>{ const i=w.indexOf(k); if(i!==-1&&i<lim) lim=i; });
@@ -301,10 +301,20 @@ const S1 = { title:"Первое приветствие · ур. 3", start:'n0',
           if(has(w,'help','lost','wait','waiting','friend','someone','person','look','find','another','wrong','just')) return {br:'other'};
           if(neg||has(w,'what','why','sorry','pardon','repeat','again','know','understand')) return {br:'ask'};
           return {huh:1}; },
-        tr:{ meet:{them:'Great. The meeting is in room 204, second floor, on the left.',ruThem:'Отлично. Встреча — кабинет 204, второй этаж, слева.',next:'floor'},
+        tr:{ meet:{them:'Great. The meeting is in room 204, second floor, on the left. Please sign the visitor book.',ruThem:'Отлично. Встреча — кабинет 204, второй этаж, слева. Распишитесь, пожалуйста, в журнале.',next:'sign'},
              home:{them:'Oh, I see. Take care, then!',ruThem:'А, понял. Тогда удачи!',next:'byehome'},
              other:{them:'I see. Take a seat - I will find the right person for you.',ruThem:'Ясно. Присядьте - я найду, кто вам нужен.',next:'wait'},
              ask:{them:'What can I do for you?',ruThem:'Чем я могу вам помочь?',next:'reason'} } },
+      sign:{ task:'Скажи, что понял, и поблагодари (например: хорошо, спасибо).', best:'Okay, thank you.',
+        judge(w,mem){
+          if(chose(w,'bye','goodbye')) return {br:'bye'};
+          if(has(w,'what','where','which','again','repeat','sorry','pardon')) return {br:'again'};
+          if(has(w,'room','floor','second','lift','left')||((mem&&mem._digits)||[]).includes('204')) return {br:'ok'}; /* попутно подтверждает путь */
+          if(has(w,'ok','okay','yes','yeah','sure','fine','great','good','thanks','thank','right','alright')) return {br:'ok'};
+          return {huh:1}; },
+        tr:{ ok:{them:'Thank you. That is right - room 204, second floor.',ruThem:'Спасибо. Всё верно — кабинет 204, второй этаж.',next:'floor'},
+             again:{them:'Of course. Room 204, second floor, on the left.',ruThem:'Конечно. Кабинет 204, второй этаж, слева.',next:'floor'},
+             bye:{them:'No problem. Have a nice day!',ruThem:'Без проблем. Хорошего дня!',next:'bye'} } },
       reason:{ task:'Ответь, зачем пришёл (например: я на встречу / жду друга / просто зашёл).', best:'I am here for the meeting.',
         judge(w){ if(has(w,'meeting','meet','appointment')&&!has(w,'no','not')) return {br:'meet'};
           if(isNegatedIntent(w,['home','leave','going','go'])) return {huh:1}; /* «не иду домой» — не уход */
@@ -328,7 +338,7 @@ const S1 = { title:"Первое приветствие · ур. 3", start:'n0',
           if(isNegatedIntent(w,['wait'])||has(w,'no','not','never')) return {br:'refuse'};
           if(has(w,'thanks','thank','ok','okay','sure','fine','great','good','alright','right','cheers','nothing','bye','goodbye')) return {br:'ok'};
           return {huh:1}; },
-        tr:{ ok:{them:'You are welcome.',ruThem:'Пожалуйста.',next:null},
+        tr:{ ok:{them:'You are welcome.',ruThem:'Пожалуйста.',next:'bye'},
              refuse:{them:'No problem. Please take a seat - I will let you know when they arrive.',ruThem:'Без проблем. Присядьте — я сообщу, когда они приедут.',next:'bye'} } },
       floor:{ task:'Переспроси, куда идти (например: кабинет 204, второй этаж?).', best:'Room 204, second floor?',
         judge(w,mem){ const d204=(mem._digits||[]).includes('204');
@@ -385,6 +395,7 @@ const S2 = { title:"Заполнить анкету · ур. 6", start:'n0',
       numH:{ task:'Назови номер дома (например: двенадцать).', best:'Twelve.',
         judge(w,mem){
           const ds=mem._digits||[];
+          if(ds.includes('0')||numOf(w)===0) return {huh:1}; /* дом «ноль» — не бывает */
           if(ds.some(d=>d.length>3||/^(\d)\1+$/.test(d))) return {huh:1}; /* 7777, 777 — не номер дома */
           const COUNT=['brother','brothers','sister','sisters','children','people','friend','friends','day','days','week','weeks','month','months','year','years','euro','euros','cat','cats','dog','dogs','apple','apples','car','cars','book','books','thing','things'];
           if(COUNT.some(x=>w.includes(x))) return {huh:1}; /* «два брата / две кошки» — не номер */
@@ -402,7 +413,7 @@ const S2 = { title:"Заполнить анкету · ур. 6", start:'n0',
           if(ds.length>1) return {br:'again'};        // два числа — непонятно, какое возраст
           if(mem._raw&&/\d+[.,]\d+/.test(mem._raw)) return {br:'again'};  // 25.5 не возраст
           const n=ds.length?ds[0]:numOf(w);
-          if(n!==null&&n>120) return {huh:1};          // 777 лет не бывает
+          if(n!==null&&(n<1||n>120)) return {huh:1};          // 0 и 777 лет не бывает
           if(n===25) return {br:'ok'};
           if(n!==null) return {br:'again'}; return {huh:1}; },
         tr:{ ok:{them:'Thank you. What is your phone number?',ruThem:'Спасибо. Ваш номер телефона?',next:'phone'},

@@ -228,7 +228,7 @@ const FLOWNUM = (w, digits) => {
   }
   return cur;
 };
-const NEGLEAD=['no','not','never','without'];
+const NEGLEAD=['no','not','never','without','cannot'];
 const NEGPASS=['to','a','an','the','and','or','any','it','this','that','one','really','just','very','so',
 'want','need','take','have','get','choose','prefer','buy','think','do','does','did',
 'would','will','can','could','should','am','is','are','be','like','likes','liked','wants'];
@@ -407,7 +407,9 @@ const S3 = { title:"У врача · ур. 39",
           since:{ task:'Ответь, с какого времени (например: со вчерашнего дня).', best:'Since yesterday.',
           judge(w,mem){ const d=(mem._digits||[]).map(Number);
                 const span=has(w,'day','days','week','weeks','month','months','hour','hours','year','years','ago','morning','night');
-                if(chose(w,'yesterday')) return {br:'yest'};
+                if(chose(w,'yesterday')){ const rawSince=(mem&&mem._raw||'').toLowerCase();
+                if(/not[^.]*yesterday|yesterday[^.]*not|isn't|wasn't|never/.test(rawSince)) return {huh:1}; /* «не со вчера» — уточнить */
+                return {br:'yest'}; }
                 if(chose(w,'today','morning')) return {br:'today'};
                 if(d.length && span) return {br:'days'};
                 if(chose(w,'day','days','week','weeks','month','months','long','time')) return {br:'days'};

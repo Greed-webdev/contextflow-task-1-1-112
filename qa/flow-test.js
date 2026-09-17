@@ -276,11 +276,11 @@ T('S1 идеал: сразу про 204 и по имени', r.ok && r.log[0].th
 r = run(s1, ['Goodbye!', 'Thank you. Goodbye!']);
 T('S1 «Goodbye!» -> ветка прощания, путь до конца', r.ok && r.end === 'bye', r.err || r.end);
 // ошибка новичка -> поправка -> встреча
-r = run(s1, ['Me name Anna.', 'Yes, I am here for the meeting.', 'Room 204, second floor?', 'Thanks a lot. Goodbye!']);
+r = run(s1, ['Me name Anna.', 'Yes, I am here for the meeting.', 'Okay, thank you.', 'Room 204, second floor?', 'Thanks a lot. Goodbye!']);
 T('S1 ошибка новичка: путь до конца', r.ok, r.err);
 T('S1 ошибка: назвал по имени и спросил про встречу', r.ok && r.log[0].them.includes('Anna') && /are you here for the meeting/i.test(r.log[0].them), r.log[0] && r.log[0].them);
 // без имени (только привет) -> спросит имя -> потом цель
-r = run(s1, ['Hello!', 'My name is Anna.', 'Yes, I am here for the meeting.', 'Room 204, second floor?', 'Thanks a lot. Goodbye!']);
+r = run(s1, ['Hello!', 'My name is Anna.', 'Yes, I am here for the meeting.', 'Okay, thank you.', 'Room 204, second floor?', 'Thanks a lot. Goodbye!']);
 T('S1 «Hello!» без имени: путь до конца', r.ok, r.err);
 T('S1 «Hello!»: спрашивает имя', r.ok && /what is your name/i.test(r.log[0].them), r.log[0] && r.log[0].them);
 // сказал про встречу, но без имени -> спросит имя -> сразу кабинет
@@ -288,7 +288,7 @@ r = run(s1, ['I have a meeting.', 'My name is Anna.', 'Room 204, second floor?',
 T('S1 встреча без имени: путь до конца', r.ok, r.err);
 T('S1 встреча без имени: спросил имя', r.ok && /what is your name/i.test(r.log[0].them), r.log[0] && r.log[0].them);
 // «жду друга» на входе -> присядьте
-r = run(s1, ['I am waiting for a friend.', 'Thank you very much.']);
+r = run(s1, ['I am waiting for a friend.', 'Thank you very much.', 'Goodbye!']);
 T('S1 «жду друга» на входе: путь до конца', r.ok, r.err);
 T('S1 «жду друга»: НЕ про кабинет/имя', r.ok && !r.log[0].them.includes('204') && !/name/i.test(r.log[0].them), r.log[0] && r.log[0].them);
 // имя без цели -> спросит про встречу; «иду домой» -> провожают (старый баг не вернулся)
@@ -297,7 +297,7 @@ T('S1 имя->«иду домой»: путь до конца', r.ok, r.err);
 T('S1 «иду домой»: НЕ «take a seat»', r.ok && !r.log[1].them.toLowerCase().includes('seat'), r.log[1] && r.log[1].them);
 T('S1 «иду домой»: «take care»', r.ok && /take care/i.test(r.log[1].them), r.log[1] && r.log[1].them);
 // «No» на вопросе про встречу -> уточнение «чем помочь?» -> помощь/просто зашёл
-r = run(s1, ['Hi, my name is Anna.', 'No.', 'I need some help, please.', 'Thank you.']);
+r = run(s1, ['Hi, my name is Anna.', 'No.', 'I need some help, please.', 'Thank you.', 'Goodbye!']);
 T('S1 «No»->уточнение->помощь: путь до конца', r.ok, r.err);
 T('S1 «No» на встречу -> ask (уточнение)', r.ok && r.log[1].br === 'ask' && /what can i do/i.test(r.log[1].them), r.log[1] && (r.log[1].br + ' / ' + r.log[1].them));
 r = run(s1, ['Hi, my name is Anna.', 'No.', 'Just looking around.', 'Bye!']);
@@ -311,7 +311,7 @@ for (const ph of ['banana','!!!','777','the the the']) {
 { const s = step(s1,'meet','yes',{}); T('meet «yes» -> meet', !s.err&&s.br==='meet', s.err||s.br); }
 { const s = step(s1,'meet','I am waiting for a friend',{}); T('meet «жду друга» -> other', !s.err&&s.br==='other', s.err||s.br); }
 // «не расслышал» -> уточнение (ask) -> помощь/просто зашёл
-r = run(s1, ['Hi, my name is Anna.', 'Sorry?', 'I need some help, please.', 'Thank you.']);
+r = run(s1, ['Hi, my name is Anna.', 'Sorry?', 'I need some help, please.', 'Thank you.', 'Goodbye!']);
 T('S1 «Sorry?»->уточнение->помощь: путь до конца', r.ok, r.err);
 T('S1 «Sorry?» -> ask', r.ok && r.log[1].br === 'ask' && /what can i do/i.test(r.log[1].them), r.log[1] && r.log[1].br);
 r = run(s1, ['Hi, my name is Anna.', 'Sorry?', 'Just looking around.', 'Bye!']);

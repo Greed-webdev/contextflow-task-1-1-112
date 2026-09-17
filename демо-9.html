@@ -228,7 +228,7 @@ const FLOWNUM = (w, digits) => {
   }
   return cur;
 };
-const NEGLEAD=['no','not','never','without'];
+const NEGLEAD=['no','not','never','without','cannot'];
 const NEGPASS=['to','a','an','the','and','or','any','it','this','that','one','really','just','very','so',
 'want','need','take','have','get','choose','prefer','buy','think','do','does','did',
 'would','will','can','could','should','am','is','are','be','like','likes','liked','wants'];
@@ -346,6 +346,7 @@ const S2 = { title:"Что-то сломалось · ур. 62",
                 if(chose(w,'water')) return {br:'water'};
                 if(chose(w,'heat','heater','heating')) return {br:'heat'};
                 if(chose(w,'door')) return {br:'door'};
+                if(chose(w,'light','lamp')&&has(w,'problem','trouble')&&has(w,'no','not','never')&&!has(w,'broken','work','working','works')) return {huh:1}; /* свет — не проблема: уточнить, что сломано */
                 if(chose(w,'light','lamp')&&!has(w,'no','not','never')&&(has(w,'works','working','fine','ok','okay'))) return {br:'poslight'};
                 if(chose(w,'light','lamp')&&chose(w,'kitchen')) return {br:'light'};
                 if(chose(w,'light','lamp')&&has(w,'no','not','never')) return {br:'nlight'};
